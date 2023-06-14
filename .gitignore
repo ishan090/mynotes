@@ -1,0 +1,15 @@
+
+# Ignore the todo file
+/TODO
+
+# Ignore .spec file
+*.spec
+
+# Ignore all txt files
+*.txt
+
+# Except requirements.txt
+!requirements.txt
+
+# Ignore all kate-swp files too (just in case)
+*.kate-swp
