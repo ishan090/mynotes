@@ -57,6 +57,9 @@ def load_settings():
     return settings
 
 
+
+
+
 def readfile(file, decipher=False, toreadfrom=tochange):
     filepath = toreadfrom+"/"+file
     with open(filepath, 'r') as f:
@@ -73,7 +76,28 @@ def entry(text, file=None, mode="a"):
     with open("enc.txt", mode) as file:
         file.writelines(enc)
 
-# Functions for each command in the cli
+
+def add_arguments():
+    if files:
+        print("Attempting to add data from files...")
+        password = input("Authentication required. Please enter your password:\n--> ")
+        if password != envi["pw"]:
+            print("Incorrect password. Action failed...")
+            return
+        for i in files:
+            if exists(toread+"/"+i):
+                print(f"Reading file {i}...", end='')
+                d = readfile(i, toreadfrom=toread)
+                print(f"Success!\nAdding data...")
+                entry(d)
+                print("Success!")
+            else:
+                entry(i)
+        print()
+
+
+### CLI FUNCTIONS
+# Read func
 def r(show_line_number=False):
     x = 1
     for i in readfile("enc.txt", decipher=True):
@@ -83,17 +107,21 @@ def r(show_line_number=False):
             print(x, i)
         x += 1
 
-
+# Append/Overwrite func
 def a():
     text = input("Enter file name (with extension) or text:\n-->")
     if exists(toread+"/"+text):
         text = readfile(text, toreadfrom=toread)
+    else:
+        text += "\n"
     entry(text)
 
+# Show encrypted func
 def s():
     for i in readfile("enc.txt"):
         print(i)
 
+# Show help
 def h():
     output = """
     MyNotes User Manual:
@@ -104,10 +132,11 @@ def h():
     h: show this msg
     p: change password
     d: delete some or all entries
+    q: exit
     """
     print(output)
 
-
+# Change Password
 def p():
     print("Trying to change your password. Please comply with the following...")
     pw = getInfo("Password")
@@ -116,6 +145,7 @@ def p():
     envi["pw"] = new
     initJson(settings=envi)
 
+# Delete entries
 def d():
     print("Which of the following lines would you like to delete...")
     r(True)
@@ -134,7 +164,7 @@ def d():
     print(f"Success! Deleted lines {lines[0]} to {lines[1]}")
 
 
-
+# Main function - CLI Loop
 def main():
     print("Hello and Welcome to this m-names store made for bookmarking ms")
     while True:
@@ -152,20 +182,6 @@ def main():
         except KeyError:
             print("No such command... type h for the list of commands")
         x = input("Enter Command:\n--> ")
-
-
-def add_arguments():
-    if files:
-        print("Adding data from files...")
-        for i in files:
-            if exists(toread+"/"+i):
-                print(f"Reading file {i}...", end='')
-                d = readfile(i, toreadfrom=toread)
-                print(f"Success!\nAdding data...", end='')
-                entry(d)
-                print("Success!")
-            else:
-                entry(i)
 
 
 if __name__ == "__main__":
