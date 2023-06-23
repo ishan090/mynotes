@@ -4,11 +4,13 @@ import os
 import sys
 import json
 
+# args passed in cli prompt
 files = sys.argv[1:]
 
-
+# CWD - the place the program was run from
 toread = os.getcwd()
 
+# store the path of encrypted files as a variable and change cwd to it
 home = os.path.expanduser('~')
 tochange = home + "/bin/stuff/"
 if not os.path.isdir(tochange):
@@ -18,11 +20,11 @@ os.chdir(tochange)
 
 def getInfo(what):
     while True:
-        out = input(f"Enter Your {what}:\n-->").strip()
+        out = input(f"Enter {what}:\n-->").strip()
         if out != "":
             break
         else:
-            print(f"Your {what} must have at least one character")
+            print(f"{what} must have at least one character")
     return out
 
 def initJson(name=None, pw=None, settings=None):
@@ -33,7 +35,9 @@ def initJson(name=None, pw=None, settings=None):
     if settings is None:
         settings = {
         "user": name,
-        "pw": pw
+        "pw": pw,
+        "used_nums": [],
+        "notebases": {}
             }
     # Serializing json
     json_object = json.dumps(settings, indent=4)
@@ -44,19 +48,24 @@ def initJson(name=None, pw=None, settings=None):
 
 
 def init():
-    if not exists("enc.txt"):
-        with open("enc.txt", "w"):
-            pass
-    if not exists("settings.json"):
+    # load the settings
+    try:
+        settings = load_settings()
+    except FileNotFoundError:
         initJson()
+        settings = load_settings()
+    # now make sure the files corresponding to the notebases are in proper order
+    for i in settings["notebases"].keys():  # for each notebase
+        if not exists(f"enc{i}.txt"):  # if the corresponding file is missing
+            with open(f"enc{i}.txt", "w"):  # create it
+                pass
+    return settings
 
 
 def load_settings():
     with open("settings.json", "r") as file:
         settings = json.load(file)
     return settings
-
-
 
 
 
@@ -73,7 +82,7 @@ def entry(text, file=None, mode="a"):
     if file is not None:
         data = readfile(file)
     enc = encrypt(data, 5, multi=True)
-    with open("enc.txt", mode) as file:
+    with open(session["enc"], mode) as file:
         file.writelines(enc)
 
 
@@ -100,7 +109,7 @@ def add_arguments():
 # Read func
 def r(show_line_number=False):
     x = 1
-    for i in readfile("enc.txt", decipher=True):
+    for i in readfile(session["enc"], decipher=True):
         if not show_line_number:
             print(i)
         else:
@@ -118,7 +127,7 @@ def a():
 
 # Show encrypted func
 def s():
-    for i in readfile("enc.txt"):
+    for i in readfile(session["enc"]):
         print(i)
 
 # Show help
@@ -133,6 +142,7 @@ def h():
     p: change password
     d: delete some or all entries
     q: exit
+    n: notebase settings - change or create notebases
     """
     print(output)
 
@@ -158,15 +168,131 @@ def d():
     if not lines[0] <= lines[1]:
         print("ERROR: FIRST ARGUMENT MUST BE LESS THAN THE SECOND!")
         return
-    data = readfile("enc.txt", decipher=True)
+    data = readfile(session["enc"], decipher=True)
     data = data[:lines[0]-1] + data[lines[1]:]
     entry(data, mode="w")
     print(f"Success! Deleted lines {lines[0]} to {lines[1]}")
 
+def get_new_key():
+    x = 0
+    while x != 100:
+        if str(x) not in list(envi["notebases"].keys()):
+            return str(x)
+        x += 1
+    raise ValueError("Maximum limit for notebases reached: 100")
+
+
+def create_notebase():
+    """
+    A notebase is a key in the settings dict which maps numbers to a notebase's name.
+    Thus, this function will first add a new key to that dict and create a file corresponding to the new key added.
+    """
+    print("Creating new NoteBase...")
+    # Find a key that hasn't already been used.
+    new = get_new_key()
+    nb_name = getInfo("NoteBase Name")
+    nb_pw = getInfo("NoteBase Password")
+
+    # register the notebase
+    envi["notebases"][new] = [nb_name, nb_pw]
+    initJson(settings=envi)
+
+    # create a file for the notebase
+    with open(f"enc{new}.txt", "w") as f:
+        pass
+
+    print("New notebase created!")
+    return True
+
+
+def del_nb():
+    print("Which NoteBase would you like to delete?")
+    showNBs()
+    to_del = input("Enter only the number --> ")
+    try:
+        global envi
+        del envi["notebases"][to_del]
+        envi["used_nums"] = list(envi["notebases"].keys())
+        os.remove(f"enc{to_del}.txt")
+        initJson(settings=envi)
+        if envi["notebases"]:
+            print("You just deleted the notebase you were working on... so...")
+            compul(changeNB, "You must select a notebase to continue as you deleted the one you were working on.")
+        else:
+            print("Your only working notebase was deleted!")
+            create_notebase()
+            session["cwnb"] = envi["notebases"][0]
+            session["enc"] = "enc0.txt"
+        return True
+    except Exception as e:
+        print(str(e))
+        return False
+
+
+def showNBs():
+    print("NoteBases Present:")
+    for i, j in envi["notebases"].items():
+        print(i, j[0])
+
+
+
+def changeNB():
+    print("Which NoteBase would you like to operate in?")
+    showNBs()
+    changeto = input("Enter only the number --> ")
+    print(envi)
+    try:
+        envi["notebases"][changeto]
+        session["cwnb"] = changeto
+        session["enc"] = f"enc{changeto}.txt"
+        print(f"Entered NoteBase {envi['notebases'][session['cwnb']][0]}")
+        return True
+    except:
+        print("No such NoteBase exists!")
+        return False
+
+
+
+def n():
+    """
+    A notebase is the place where the user's notes are stored. Like data is stored in a database.
+    This function will allow a user to change their current working notebase or even create another one.
+    """
+    # print("Welcome to NoteBase Settings, what would you like to do?")
+    operations = """
+    Available options
+
+    show: Display NoteBases
+    change: Change Current Working NoteBase
+    create or mk: Create a New NoteBase
+    del, delete, rm: Delete a NoteBase
+    """
+    # print(operations)
+    # task = input(operations+"\nEnter Number (1-3):\n--> ")
+    # if task == "q" or not task in ["1", "2", "3"]:
+    #     return
+    tasks = {"show": showNBs, "change": changeNB, "create": create_notebase, "delete": del_nb, "del": del_nb, "rm": del_nb, "mk": create_notebase, "h": lambda: print(operations)}
+    print(prompt[1])
+    try:
+        tasks[prompt[1]]()
+    except KeyError:
+        print(f"Invalid command {prompt}. Type n h or help for available actions")
+    except IndexError:
+        print("command lacks additional argument. Type n h or n help for more info")
+
+
+def compul(A, msg):
+    while True:
+        result = A()
+        if result:
+            break
+        else:
+            print(msg)
+
 
 # Main function - CLI Loop
 def main():
-    print("Hello and Welcome to this m-names store made for bookmarking ms")
+    print("Hello and Welcome to this program made for making secure, quick and easy notes.")
     while True:
         pw = getInfo("Password")
         if pw != envi["pw"]:
@@ -174,19 +300,34 @@ def main():
         else:
             break
     print()
-    x = input("Enter Command:\n--> ").strip()
-    commandMap = {'r': r, 'a': a, 's': s, 'h': h, 'p': p, 'd': d}
-    while x != 'q':
+    # If there are no notebases
+    if not envi["notebases"].keys():
+        print("You currently do not have any NoteBases to write in. Please create a NoteBase.")
+        create_notebase()
+        session["cwnb"] = envi["notebases"][0]
+        session["enc"] = "enc0.txt"
+    else:
+        print("Please select a NoteBase to continue...")
+        compul(changeNB, "You must select a NoteBase to continue. Try again.")
+    print()
+    # After making the user select a notebase, move on to the prompts.
+    global prompt
+    prompt = input("Enter Command:\n--> ").strip().split()
+    commandMap = {'r': r, 'a': a, 's': s, 'h': h, 'p': p, 'd': d, 'n': n, 'status': lambda: print(envi["notebases"], session)}
+    while prompt != ['q']:
         try:
-            commandMap[x]()
+            commandMap[prompt[0]]()
         except KeyError:
             print("No such command... type h for the list of commands")
-        x = input("Enter Command:\n--> ")
+        except IndexError:  # If nothing is typed, continue
+            pass
+        prompt = input("Enter Command:\n--> ").strip().split()
 
 
 if __name__ == "__main__":
-    init()
-    envi = load_settings()
+    envi = init()
+    # session["cwnb"] maps to a string -> the numberical key used for the notebase in the dict envi["notebases"]
+    session = {}
     add_arguments()
     main()
 

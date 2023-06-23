@@ -13,3 +13,6 @@
 
 # Ignore all kate-swp files too (just in case)
 *.kate-swp
+
+# Ignore test.py as that is reserved for testing purposes
+test.py
