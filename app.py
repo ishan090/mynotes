@@ -211,6 +211,10 @@ def del_nb():
     to_del = input("Enter only the number --> ")
     try:
         global envi
+        pw = input(f"Trying to delete notebase {envi['notebases'][to_del][0]}, enter notebase password:\n--> ")
+        if pw != envi['notebases'][to_del][1]:
+            print("Wrong password. Try again.")
+            return
         del envi["notebases"][to_del]
         envi["used_nums"] = list(envi["notebases"].keys())
         os.remove(f"enc{to_del}.txt")
@@ -224,6 +228,8 @@ def del_nb():
             session["cwnb"] = envi["notebases"][0]
             session["enc"] = "enc0.txt"
         return True
+    except KeyError:
+        print("error: please enter the correst notebase number")
     except Exception as e:
         print(str(e))
         return False
@@ -240,8 +246,12 @@ def changeNB():
     print("Which NoteBase would you like to operate in?")
     showNBs()
     changeto = input("Enter only the number --> ")
-    print(envi)
+    # print(envi)
     try:
+        pw = input(f"Trying to change to notebase {envi['notebases'][changeto][0]}, enter notebase password:\n--> ")
+        if pw != envi['notebases'][changeto][1]:
+            print("Wrong password. Try again.")
+            return False
         envi["notebases"][changeto]
         session["cwnb"] = changeto
         session["enc"] = f"enc{changeto}.txt"
@@ -272,7 +282,7 @@ def n():
     # if task == "q" or not task in ["1", "2", "3"]:
     #     return
     tasks = {"show": showNBs, "change": changeNB, "create": create_notebase, "delete": del_nb, "del": del_nb, "rm": del_nb, "mk": create_notebase, "h": lambda: print(operations)}
-    print(prompt[1])
+    # print(prompt[1])
     try:
         tasks[prompt[1]]()
     except KeyError:
@@ -312,7 +322,7 @@ def main():
     print()
     # After making the user select a notebase, move on to the prompts.
     global prompt
-    prompt = input("Enter Command:\n--> ").strip().split()
+    prompt = input(f"Enter Command: (Current NoteBase - {envi['notebases'][session['cwnb']][0]})\n--> ").strip().split()
     commandMap = {'r': r, 'a': a, 's': s, 'h': h, 'p': p, 'd': d, 'n': n, 'status': lambda: print(envi["notebases"], session)}
     while prompt != ['q']:
         try:
@@ -321,8 +331,7 @@ def main():
             print("No such command... type h for the list of commands")
         except IndexError:  # If nothing is typed, continue
             pass
-        prompt = input("Enter Command:\n--> ").strip().split()
-
+        prompt = input(f"Enter Command: (Current NoteBase - {envi['notebases'][session['cwnb']][0]})\n--> ").strip().split()
 
 if __name__ == "__main__":
     envi = init()
