@@ -219,9 +219,11 @@ def del_nb():
         envi["used_nums"] = list(envi["notebases"].keys())
         os.remove(f"enc{to_del}.txt")
         initJson(settings=envi)
-        if envi["notebases"]:
+        if session["cwnb"] not in envi["notebases"].keys():
             print("You just deleted the notebase you were working on... so...")
             compul(changeNB, "You must select a notebase to continue as you deleted the one you were working on.")
+        elif envi["notebases"]:
+            pass
         else:
             print("Your only working notebase was deleted!")
             create_notebase()
@@ -327,6 +329,7 @@ def main():
     while prompt != ['q']:
         try:
             commandMap[prompt[0]]()
+            print()
         except KeyError:
             print("No such command... type h for the list of commands")
         except IndexError:  # If nothing is typed, continue
